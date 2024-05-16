@@ -11,6 +11,15 @@ A collection of projects in DS and ML field in jupyter-notebook files
 
 ## DL & NLP
 
+-
+-
+-
+-
+- [Spam filtering using BERT: comparison of classic ML algorithmsa and encoding methods](https://github.com/dgrushina/Portfolio-Grushina-Daria/blob/main/Spam%20filtering.ipynb)
+
 ## Data Analytics
 
 - [Cryptocurrency dataset analysis: EDA, trading strategies, pump'n'dump search, technical analysis, comparison of correlations and capitalization of coins](https://github.com/dgrushina/Portfolio-Grushina-Daria/blob/main/Cryptocurrency%20dataset%20analysis.ipynb)
+- [E-commerce items dataset EDA and basic object detection with RetinaNet](https://github.com/dgrushina/Portfolio-Grushina-Daria/blob/main/E-commerce%20EDA%20and%20basic%20object%20detection.ipynb)
+- [Sentiment analysis EDA](https://github.com/dgrushina/Portfolio-Grushina-Daria/blob/main/Sentiment%20analysis%20EDA.ipynb)
+- [Annual salaries report generation](https://github.com/dgrushina/Portfolio-Grushina-Daria/blob/main/Salary%20report.ipynb)
