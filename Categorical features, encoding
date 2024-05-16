@@ -1,0 +1,1684 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {
+    "executionInfo": {
+     "elapsed": 567,
+     "status": "ok",
+     "timestamp": 1700038412391,
+     "user": {
+      "displayName": "Sergey Korpachev",
+      "userId": "09181340988160569540"
+     },
+     "user_tz": -180
+    },
+    "id": "xAlXAbRFhW7I"
+   },
+   "outputs": [],
+   "source": [
+    "from __future__ import annotations\n",
+    "\n",
+    "import numpy as np\n",
+    "import pandas as pd\n",
+    "import matplotlib.pyplot as plt\n",
+    "%matplotlib inline\n",
+    "\n",
+    "pd.set_option('display.max_rows', 100)\n",
+    "pd.set_option('display.max_columns', 100)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {
+    "executionInfo": {
+     "elapsed": 1747,
+     "status": "ok",
+     "timestamp": 1700038534314,
+     "user": {
+      "displayName": "Sergey Korpachev",
+      "userId": "09181340988160569540"
+     },
+     "user_tz": -180
+    },
+    "id": "GHOaSVeuMVIv"
+   },
+   "outputs": [],
+   "source": [
+    "from sklearn.model_selection import train_test_split"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {
+    "executionInfo": {
+     "elapsed": 5,
+     "status": "ok",
+     "timestamp": 1700038795491,
+     "user": {
+      "displayName": "Sergey Korpachev",
+      "userId": "09181340988160569540"
+     },
+     "user_tz": -180
+    },
+    "id": "0ZuY_fyfNVTU"
+   },
+   "outputs": [],
+   "source": [
+    "import time\n",
+    "import warnings\n",
+    "warnings.filterwarnings('ignore')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "metadata": {
+    "executionInfo": {
+     "elapsed": 4,
+     "status": "ok",
+     "timestamp": 1700038839736,
+     "user": {
+      "displayName": "Sergey Korpachev",
+      "userId": "09181340988160569540"
+     },
+     "user_tz": -180
+    },
+    "id": "wE3wmAdgNb-O"
+   },
+   "outputs": [],
+   "source": [
+    "from sklearn.metrics import roc_auc_score\n",
+    "from sklearn.metrics import auc\n",
+    "from sklearn.metrics import precision_recall_curve\n",
+    "\n",
+    "from sklearn.preprocessing import OrdinalEncoder\n",
+    "from sklearn.preprocessing import OneHotEncoder\n",
+    "from sklearn.pipeline import Pipeline\n",
+    "\n",
+    "from sklearn.linear_model import LogisticRegression\n",
+    "logreg = LogisticRegression()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "zMXu7UKxhW7P"
+   },
+   "source": [
+    "## Работа с категориальными признаками (10 баллов)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "aqZYektDhW7P"
+   },
+   "source": [
+    "Сейчас мы научимся обрабатывать категориальные переменные. Как вы уже знаете, закодировать их в виде столбика чисел недостаточно (это задаёт некоторый порядок, которого на категориальных переменных может и не быть, но модель попробует его выучить). Существует два основных способа обработки категориальных значений:\n",
+    "- One-hot-кодирование\n",
+    "- Счётчики (CTR, mean-target кодирование, ...) — каждый категориальный признак заменяется на среднее значение целевой переменной по всем объектам, имеющим одинаковое значение в этом признаке.\n",
+    "\n",
+    "Начнём с one-hot-кодирования. Допустим наш категориальный признак $f_j(x)$ принимает значения из множества $C=\\{c_1, \\dots, c_m\\}$. Заменим его на $m$ бинарных признаков $b_1(x), \\dots, b_m(x)$, каждый из которых является индикатором одного из возможных категориальных значений:\n",
+    "$$\n",
+    "b_i(x) = [f_j(x) = c_i]\n",
+    "$$"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "nSepFXWbhW7P"
+   },
+   "source": [
+    "__Подготовка данных.__\n",
+    "\n",
+    "Загрузим данные [UCI Bank Marketing Dataset](https://archive.ics.uci.edu/ml/datasets/bank+marketing). Этот датасет содержит информацию о маркетинговой кампании какого-то банка, объектом в нем является телефонный звонок потенциальному клиенту с предложением некоторой услуги (утверждается, что это краткосрочный депозит), целевой переменной — ответ клиента (согласился ли он открыть депозит?). В качестве признакового описания используются характеристики клиента (образование, брак и т.д.), данные о звонке и различные экономические индикаторы — более подробная информация на страничке с датасетом."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "executionInfo": {
+     "elapsed": 596,
+     "status": "ok",
+     "timestamp": 1700038467527,
+     "user": {
+      "displayName": "Sergey Korpachev",
+      "userId": "09181340988160569540"
+     },
+     "user_tz": -180
+    },
+    "id": "UQhnsjfshW7Q",
+    "outputId": "539c983f-b641-4828-d65d-ae3cacfd3170"
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "--2023-11-30 20:23:15--  https://archive.ics.uci.edu/ml/machine-learning-databases/00222/bank-additional.zip\n",
+      "Resolving archive.ics.uci.edu (archive.ics.uci.edu)... 128.195.10.252\n",
+      "Connecting to archive.ics.uci.edu (archive.ics.uci.edu)|128.195.10.252|:443... connected.\n",
+      "HTTP request sent, awaiting response... 200 OK\n",
+      "Length: unspecified\n",
+      "Saving to: 'bank-additional.zip.13'\n",
+      "\n",
+      "bank-additional.zip     [       <=>          ] 434.15K   249KB/s    in 1.7s    \n",
+      "\n",
+      "2023-11-30 20:23:18 (249 KB/s) - 'bank-additional.zip.13' saved [444572]\n",
+      "\n",
+      "Archive:  bank-additional.zip\n",
+      "replace bank-additional/.DS_Store? [y]es, [n]o, [A]ll, [N]one, [r]ename: ^C\n"
+     ]
+    }
+   ],
+   "source": [
+    "!wget https://archive.ics.uci.edu/ml/machine-learning-databases/00222/bank-additional.zip\n",
+    "!unzip bank-additional.zip\n",
+    "df = pd.read_csv('bank-additional/bank-additional-full.csv', sep=';')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 174,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/",
+     "height": 228
+    },
+    "executionInfo": {
+     "elapsed": 384,
+     "status": "ok",
+     "timestamp": 1700038477162,
+     "user": {
+      "displayName": "Sergey Korpachev",
+      "userId": "09181340988160569540"
+     },
+     "user_tz": -180
+    },
+    "id": "ZyNMVryOhW7Q",
+    "outputId": "b5815830-675b-435c-c39d-17e3d0f2fa8f"
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>index</th>\n",
+       "      <th>age</th>\n",
+       "      <th>job</th>\n",
+       "      <th>marital</th>\n",
+       "      <th>education</th>\n",
+       "      <th>default</th>\n",
+       "      <th>housing</th>\n",
+       "      <th>loan</th>\n",
+       "      <th>contact</th>\n",
+       "      <th>month</th>\n",
+       "      <th>day_of_week</th>\n",
+       "      <th>duration</th>\n",
+       "      <th>campaign</th>\n",
+       "      <th>pdays</th>\n",
+       "      <th>previous</th>\n",
+       "      <th>poutcome</th>\n",
+       "      <th>emp.var.rate</th>\n",
+       "      <th>cons.price.idx</th>\n",
+       "      <th>cons.conf.idx</th>\n",
+       "      <th>euribor3m</th>\n",
+       "      <th>nr.employed</th>\n",
+       "      <th>y</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>0</td>\n",
+       "      <td>56</td>\n",
+       "      <td>housemaid</td>\n",
+       "      <td>married</td>\n",
+       "      <td>basic.4y</td>\n",
+       "      <td>no</td>\n",
+       "      <td>no</td>\n",
+       "      <td>no</td>\n",
+       "      <td>telephone</td>\n",
+       "      <td>may</td>\n",
+       "      <td>mon</td>\n",
+       "      <td>261</td>\n",
+       "      <td>1</td>\n",
+       "      <td>999</td>\n",
+       "      <td>0</td>\n",
+       "      <td>nonexistent</td>\n",
+       "      <td>1.1</td>\n",
+       "      <td>93.994</td>\n",
+       "      <td>-36.4</td>\n",
+       "      <td>4.857</td>\n",
+       "      <td>5191.0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>1</td>\n",
+       "      <td>57</td>\n",
+       "      <td>services</td>\n",
+       "      <td>married</td>\n",
+       "      <td>high.school</td>\n",
+       "      <td>unknown</td>\n",
+       "      <td>no</td>\n",
+       "      <td>no</td>\n",
+       "      <td>telephone</td>\n",
+       "      <td>may</td>\n",
+       "      <td>mon</td>\n",
+       "      <td>149</td>\n",
+       "      <td>1</td>\n",
+       "      <td>999</td>\n",
+       "      <td>0</td>\n",
+       "      <td>nonexistent</td>\n",
+       "      <td>1.1</td>\n",
+       "      <td>93.994</td>\n",
+       "      <td>-36.4</td>\n",
+       "      <td>4.857</td>\n",
+       "      <td>5191.0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>2</td>\n",
+       "      <td>37</td>\n",
+       "      <td>services</td>\n",
+       "      <td>married</td>\n",
+       "      <td>high.school</td>\n",
+       "      <td>no</td>\n",
+       "      <td>yes</td>\n",
+       "      <td>no</td>\n",
+       "      <td>telephone</td>\n",
+       "      <td>may</td>\n",
+       "      <td>mon</td>\n",
+       "      <td>226</td>\n",
+       "      <td>1</td>\n",
+       "      <td>999</td>\n",
+       "      <td>0</td>\n",
+       "      <td>nonexistent</td>\n",
+       "      <td>1.1</td>\n",
+       "      <td>93.994</td>\n",
+       "      <td>-36.4</td>\n",
+       "      <td>4.857</td>\n",
+       "      <td>5191.0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>3</td>\n",
+       "      <td>40</td>\n",
+       "      <td>admin.</td>\n",
+       "      <td>married</td>\n",
+       "      <td>basic.6y</td>\n",
+       "      <td>no</td>\n",
+       "      <td>no</td>\n",
+       "      <td>no</td>\n",
+       "      <td>telephone</td>\n",
+       "      <td>may</td>\n",
+       "      <td>mon</td>\n",
+       "      <td>151</td>\n",
+       "      <td>1</td>\n",
+       "      <td>999</td>\n",
+       "      <td>0</td>\n",
+       "      <td>nonexistent</td>\n",
+       "      <td>1.1</td>\n",
+       "      <td>93.994</td>\n",
+       "      <td>-36.4</td>\n",
+       "      <td>4.857</td>\n",
+       "      <td>5191.0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>4</td>\n",
+       "      <td>56</td>\n",
+       "      <td>services</td>\n",
+       "      <td>married</td>\n",
+       "      <td>high.school</td>\n",
+       "      <td>no</td>\n",
+       "      <td>no</td>\n",
+       "      <td>yes</td>\n",
+       "      <td>telephone</td>\n",
+       "      <td>may</td>\n",
+       "      <td>mon</td>\n",
+       "      <td>307</td>\n",
+       "      <td>1</td>\n",
+       "      <td>999</td>\n",
+       "      <td>0</td>\n",
+       "      <td>nonexistent</td>\n",
+       "      <td>1.1</td>\n",
+       "      <td>93.994</td>\n",
+       "      <td>-36.4</td>\n",
+       "      <td>4.857</td>\n",
+       "      <td>5191.0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>...</th>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>995</th>\n",
+       "      <td>995</td>\n",
+       "      <td>32</td>\n",
+       "      <td>entrepreneur</td>\n",
+       "      <td>married</td>\n",
+       "      <td>basic.6y</td>\n",
+       "      <td>no</td>\n",
+       "      <td>yes</td>\n",
+       "      <td>no</td>\n",
+       "      <td>telephone</td>\n",
+       "      <td>may</td>\n",
+       "      <td>wed</td>\n",
+       "      <td>163</td>\n",
+       "      <td>1</td>\n",
+       "      <td>999</td>\n",
+       "      <td>0</td>\n",
+       "      <td>nonexistent</td>\n",
+       "      <td>1.1</td>\n",
+       "      <td>93.994</td>\n",
+       "      <td>-36.4</td>\n",
+       "      <td>4.856</td>\n",
+       "      <td>5191.0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>996</th>\n",
+       "      <td>996</td>\n",
+       "      <td>41</td>\n",
+       "      <td>services</td>\n",
+       "      <td>single</td>\n",
+       "      <td>high.school</td>\n",
+       "      <td>no</td>\n",
+       "      <td>yes</td>\n",
+       "      <td>yes</td>\n",
+       "      <td>telephone</td>\n",
+       "      <td>may</td>\n",
+       "      <td>wed</td>\n",
+       "      <td>345</td>\n",
+       "      <td>1</td>\n",
+       "      <td>999</td>\n",
+       "      <td>0</td>\n",
+       "      <td>nonexistent</td>\n",
+       "      <td>1.1</td>\n",
+       "      <td>93.994</td>\n",
+       "      <td>-36.4</td>\n",
+       "      <td>4.856</td>\n",
+       "      <td>5191.0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>997</th>\n",
+       "      <td>997</td>\n",
+       "      <td>59</td>\n",
+       "      <td>housemaid</td>\n",
+       "      <td>married</td>\n",
+       "      <td>basic.6y</td>\n",
+       "      <td>no</td>\n",
+       "      <td>yes</td>\n",
+       "      <td>no</td>\n",
+       "      <td>telephone</td>\n",
+       "      <td>may</td>\n",
+       "      <td>wed</td>\n",
+       "      <td>329</td>\n",
+       "      <td>1</td>\n",
+       "      <td>999</td>\n",
+       "      <td>0</td>\n",
+       "      <td>nonexistent</td>\n",
+       "      <td>1.1</td>\n",
+       "      <td>93.994</td>\n",
+       "      <td>-36.4</td>\n",
+       "      <td>4.856</td>\n",
+       "      <td>5191.0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>998</th>\n",
+       "      <td>998</td>\n",
+       "      <td>57</td>\n",
+       "      <td>technician</td>\n",
+       "      <td>married</td>\n",
+       "      <td>basic.9y</td>\n",
+       "      <td>no</td>\n",
+       "      <td>yes</td>\n",
+       "      <td>no</td>\n",
+       "      <td>telephone</td>\n",
+       "      <td>may</td>\n",
+       "      <td>wed</td>\n",
+       "      <td>68</td>\n",
+       "      <td>1</td>\n",
+       "      <td>999</td>\n",
+       "      <td>0</td>\n",
+       "      <td>nonexistent</td>\n",
+       "      <td>1.1</td>\n",
+       "      <td>93.994</td>\n",
+       "      <td>-36.4</td>\n",
+       "      <td>4.856</td>\n",
+       "      <td>5191.0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>999</th>\n",
+       "      <td>999</td>\n",
+       "      <td>30</td>\n",
+       "      <td>services</td>\n",
+       "      <td>married</td>\n",
+       "      <td>unknown</td>\n",
+       "      <td>no</td>\n",
+       "      <td>no</td>\n",
+       "      <td>no</td>\n",
+       "      <td>telephone</td>\n",
+       "      <td>may</td>\n",
+       "      <td>wed</td>\n",
+       "      <td>143</td>\n",
+       "      <td>3</td>\n",
+       "      <td>999</td>\n",
+       "      <td>0</td>\n",
+       "      <td>nonexistent</td>\n",
+       "      <td>1.1</td>\n",
+       "      <td>93.994</td>\n",
+       "      <td>-36.4</td>\n",
+       "      <td>4.856</td>\n",
+       "      <td>5191.0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "<p>1000 rows × 22 columns</p>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "     index  age           job  marital    education  default housing loan  \\\n",
+       "0        0   56     housemaid  married     basic.4y       no      no   no   \n",
+       "1        1   57      services  married  high.school  unknown      no   no   \n",
+       "2        2   37      services  married  high.school       no     yes   no   \n",
+       "3        3   40        admin.  married     basic.6y       no      no   no   \n",
+       "4        4   56      services  married  high.school       no      no  yes   \n",
+       "..     ...  ...           ...      ...          ...      ...     ...  ...   \n",
+       "995    995   32  entrepreneur  married     basic.6y       no     yes   no   \n",
+       "996    996   41      services   single  high.school       no     yes  yes   \n",
+       "997    997   59     housemaid  married     basic.6y       no     yes   no   \n",
+       "998    998   57    technician  married     basic.9y       no     yes   no   \n",
+       "999    999   30      services  married      unknown       no      no   no   \n",
+       "\n",
+       "       contact month day_of_week  duration  campaign  pdays  previous  \\\n",
+       "0    telephone   may         mon       261         1    999         0   \n",
+       "1    telephone   may         mon       149         1    999         0   \n",
+       "2    telephone   may         mon       226         1    999         0   \n",
+       "3    telephone   may         mon       151         1    999         0   \n",
+       "4    telephone   may         mon       307         1    999         0   \n",
+       "..         ...   ...         ...       ...       ...    ...       ...   \n",
+       "995  telephone   may         wed       163         1    999         0   \n",
+       "996  telephone   may         wed       345         1    999         0   \n",
+       "997  telephone   may         wed       329         1    999         0   \n",
+       "998  telephone   may         wed        68         1    999         0   \n",
+       "999  telephone   may         wed       143         3    999         0   \n",
+       "\n",
+       "        poutcome  emp.var.rate  cons.price.idx  cons.conf.idx  euribor3m  \\\n",
+       "0    nonexistent           1.1          93.994          -36.4      4.857   \n",
+       "1    nonexistent           1.1          93.994          -36.4      4.857   \n",
+       "2    nonexistent           1.1          93.994          -36.4      4.857   \n",
+       "3    nonexistent           1.1          93.994          -36.4      4.857   \n",
+       "4    nonexistent           1.1          93.994          -36.4      4.857   \n",
+       "..           ...           ...             ...            ...        ...   \n",
+       "995  nonexistent           1.1          93.994          -36.4      4.856   \n",
+       "996  nonexistent           1.1          93.994          -36.4      4.856   \n",
+       "997  nonexistent           1.1          93.994          -36.4      4.856   \n",
+       "998  nonexistent           1.1          93.994          -36.4      4.856   \n",
+       "999  nonexistent           1.1          93.994          -36.4      4.856   \n",
+       "\n",
+       "     nr.employed  y  \n",
+       "0         5191.0  0  \n",
+       "1         5191.0  0  \n",
+       "2         5191.0  0  \n",
+       "3         5191.0  0  \n",
+       "4         5191.0  0  \n",
+       "..           ... ..  \n",
+       "995       5191.0  0  \n",
+       "996       5191.0  0  \n",
+       "997       5191.0  0  \n",
+       "998       5191.0  0  \n",
+       "999       5191.0  0  \n",
+       "\n",
+       "[1000 rows x 22 columns]"
+      ]
+     },
+     "execution_count": 174,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "df.head()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "EmGYivC2hW7R"
+   },
+   "source": [
+    "__Задание 1 (2 балла).__ Разделите выборку на обучающую и тестовую в соотношении 3:1. Зафиксируйте `random_state=777`, укажите значение параметра `stratify`. Один из столбцов (помимо таргета :) ) стоит сразу выкинуть из обучающей выборки. Какой? Не отказывайте себе.\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "executionInfo": {
+     "elapsed": 250,
+     "status": "ok",
+     "timestamp": 1700038539917,
+     "user": {
+      "displayName": "Sergey Korpachev",
+      "userId": "09181340988160569540"
+     },
+     "user_tz": -180
+    },
+    "id": "5UJBGhFzhW7R"
+   },
+   "outputs": [],
+   "source": [
+    "# На мой взгляд, стоит выкинуть столбец \"contact\": способ связи (cellular/telephone) никак не влияет на \n",
+    "# вероятность открытия депозита"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 38,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Выкинула столбец 'contact' и перевела таргет из 'yes'/'no' в '1'/'0' (для удобства измерения ошибки)\n",
+    "\n",
+    "list_of_x_cols = ['age',\n",
+    "                  'job',\n",
+    "                  'marital',\n",
+    "                  'education',\n",
+    "                  'default',\n",
+    "                  'housing',\n",
+    "                  'loan',\n",
+    "                  'month',\n",
+    "                  'day_of_week',\n",
+    "                  'duration',\n",
+    "                  'campaign',\n",
+    "                  'pdays',\n",
+    "                  'previous',\n",
+    "                  'poutcome',\n",
+    "                  'emp.var.rate',\n",
+    "                  'cons.price.idx',\n",
+    "                  'cons.conf.idx',\n",
+    "                  'euribor3m',\n",
+    "                  'nr.employed']\n",
+    "\n",
+    "df['y'] = pd.Categorical(df['y']).codes\n",
+    "X_train, X_test, y_train, y_test = train_test_split(df[list_of_x_cols], df['y'],test_size=0.25, random_state=777, stratify=df['y'])\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "CkJ0qDdyhW7R"
+   },
+   "source": [
+    "Закодируйте категориальные признаки с помощью `OrdinalEncoder`. Посчитайте качество (в этом задании будем работать c `AUC-PR`) при применении логистической регрессии. Здесь и далее для реализации последовательности этих действий (обработка признаков + обучение модели) используйте пайплайны. Замерьте время, потребовавшееся на обучение модели (с учетом кодирования признаков).\n",
+    "\n",
+    "__Вопрос__: почему в данном задании мы выбрали метрикой именно `AUC-PR`, а не, к примеру, `AUC-ROC`?\n",
+    "\n",
+    "__Ваш ответ__: "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "executionInfo": {
+     "elapsed": 2060,
+     "status": "ok",
+     "timestamp": 1700038706970,
+     "user": {
+      "displayName": "Sergey Korpachev",
+      "userId": "09181340988160569540"
+     },
+     "user_tz": -180
+    },
+    "id": "5Da9IkMfhW7S",
+    "outputId": "3f120345-aab8-4a06-ba1b-bd153dcc604c"
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Время обучения модели:\n",
+      "0.25750207901000977 seconds\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Добавила модуль Time, чтобы засекать время обучения моделей\n",
+    "# Создала Пайплайн с Ординал Энкодером и Логистической Регрессией\n",
+    "\n",
+    "start_time = time.time()\n",
+    "\n",
+    "oenc_pipe = Pipeline([('ordinal_encoder', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1)), ('logistic_regression', LogisticRegression())])\n",
+    "\n",
+    "oenc_pipe.fit(X_train, y_train)\n",
+    "print(\"Время обучения модели:\")\n",
+    "print(\"%s seconds\" % (time.time() - start_time))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Для удобства создала функцию подсчета PR-AUC из встроенных функций в sklearn\n",
+    "\n",
+    "def pr_auc(y_true, y_predict):\n",
+    "    \n",
+    "    precision, recall, thresholds = precision_recall_curve(y_true, y_predict)\n",
+    "    \n",
+    "    return auc(recall, precision)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "0.54458038324279\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(pr_auc(y_test, oenc_pipe.predict(X_test)))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "\"\"\"\n",
+    "\n",
+    "Почему мы выбрали PR-AUC, а не ROC-AUC?\n",
+    "\n",
+    "Потому что ROC-AUC плох в работе с асимметричными классами таргета: он придает FP и FN одинаковый вес.\n",
+    "В то время как у нас класс 'yes' ('1') в таргете ощутимо меньше класса 'no' ('0'), то есть\n",
+    "клиенты часто отказываются от депозитов. Классы асимметричны, а значит, измерение ошибки тоже должно быть\n",
+    "асимметричным, ведь ложнопозитивные ответы нам обходятся дороже, чем ложнонегативные. \n",
+    "\n",
+    "(Ведь Precision измеряет именно долю верно угаданных положительных ответов от всего количества предсказанных\n",
+    "как положительных, то есть концентрируется на точности предсказания позитивного класса, а не на общей\n",
+    "точности предсказания)\n",
+    "\n",
+    "Продемонстрируем ассиметрию классов в таргете:\n",
+    "\n",
+    "\"\"\""
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 15,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Процент отрицательных ответов в таргете: 88.73458288821988\n",
+      "Процент положительных ответов в таргете: 11.26541711178013\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(\"Процент отрицательных ответов в таргете: \"+str(100. * (df['y'] == 0).sum() / len(df['y'].index)))\n",
+    "print(\"Процент положительных ответов в таргете: \"+str(100. * (df['y'] == 1).sum() / len(df['y'].index)))\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "\"\"\"\n",
+    "\n",
+    "Так как асимметрия классов в таргете сохраняется на протяжении всего задания,\n",
+    "ведь мы используем один и тот же датасет, логично для измерения ошибки в дальнейшем тоже использовать\n",
+    "PR-AUC, ведь применение ROC-AUC и иных метрик будет не таким точным.\n",
+    "\n",
+    "\"\"\""
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "MsXcMPx8hW7S"
+   },
+   "source": [
+    "One-hot кодирование\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 16,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "executionInfo": {
+     "elapsed": 1104,
+     "status": "ok",
+     "timestamp": 1700038757279,
+     "user": {
+      "displayName": "Sergey Korpachev",
+      "userId": "09181340988160569540"
+     },
+     "user_tz": -180
+    },
+    "id": "YYc-6CIBhW7T",
+    "outputId": "aa52283e-2774-492a-ab77-ce9656affe0d"
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Время обучения модели:\n",
+      "0.41299891471862793 seconds\n"
+     ]
+    }
+   ],
+   "source": [
+    "start_time = time.time()\n",
+    "\n",
+    "onehot_pipe = Pipeline([('onehot_encoder', OneHotEncoder(handle_unknown='ignore')), ('logistic_regression', LogisticRegression())])\n",
+    "\n",
+    "onehot_pipe.fit(X_train, y_train)\n",
+    "print(\"Время обучения модели:\")\n",
+    "print(\"%s seconds\" % (time.time() - start_time))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 18,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "0.5710121842104542\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(pr_auc(y_test, onehot_pipe.predict(X_test)))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Время обучения модели увеличилось в 2 раза, качество незначительно возросло."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "_GMxe0-RhW7T"
+   },
+   "source": [
+    "Кодирование при помощи счетчиков"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 175,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "executionInfo": {
+     "elapsed": 753,
+     "status": "ok",
+     "timestamp": 1700038772527,
+     "user": {
+      "displayName": "Sergey Korpachev",
+      "userId": "09181340988160569540"
+     },
+     "user_tz": -180
+    },
+    "id": "08SjwjmahW7U",
+    "outputId": "83637b2e-4b27-45e3-f257-2c3052db68e8"
+   },
+   "outputs": [],
+   "source": [
+    "X_train_3 = X_train.copy()\n",
+    "X_test_3 = X_test.copy()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Поскольку кодирование с помощью счетчиков придется выполнять уже руками, а не через встроенные функции,\n",
+    "# нужно будет определить, какие именно признаки категориальные.\n",
+    "# Я проанализировала инструкцию работы с датасетом, из всех имеющихся признаков категориальными не являются:\n",
+    "# 'age', 'duration', 'campaign', 'pdays', 'previous', 'emp.var.rate', 'cons.price.idx', 'euribor3m', 'nr.employed'\n",
+    "# Их мы выкинем из списка признаков для кодирования"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 176,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "list_of_x_cols_3 = ['job',\n",
+    "                  'marital',\n",
+    "                  'education',\n",
+    "                  'default',\n",
+    "                  'housing',\n",
+    "                  'loan',\n",
+    "                  'month',\n",
+    "                  'day_of_week',\n",
+    "                  'poutcome']\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 177,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Время кодирования:\n",
+      "0.24985218048095703 seconds\n"
+     ]
+    }
+   ],
+   "source": [
+    "start_time = time.time()\n",
+    "\n",
+    "maps_3 = dict()\n",
+    "\n",
+    "for col in list_of_x_cols_3:\n",
+    "    tmap_3 = dict()\n",
+    "    uniques_3 = X_train[col].unique()\n",
+    "    for unique in uniques_3:\n",
+    "        \n",
+    "        tmap_3[unique] = y_train[X_train[col]==unique].mean()\n",
+    "        maps_3[col] = tmap_3\n",
+    "        \n",
+    "for col, tmap_3 in maps_3.items():\n",
+    "    \n",
+    "    values_train_3 = np.zeros(np.size(X_train[col]))\n",
+    "    values_test_3 = np.zeros(np.size(X_test[col]))\n",
+    "    \n",
+    "    for val, mean_target in tmap_3.items():\n",
+    "        \n",
+    "        values_train_3[X_train[col]==val] = mean_target\n",
+    "        X_train_3[col] = values_train_3\n",
+    "        \n",
+    "        values_test_3[X_test[col]==val] = mean_target\n",
+    "        X_test_3[col] = values_test_3\n",
+    "        \n",
+    "print(\"Время кодирования:\")\n",
+    "print(\"%s seconds\" % (time.time() - start_time))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 178,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "logreg3 = LogisticRegression()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 179,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Время обучения модели:\n",
+      "0.1962289810180664 seconds\n"
+     ]
+    }
+   ],
+   "source": [
+    "start_time = time.time()\n",
+    "\n",
+    "logreg3.fit(X_train_3, y_train)\n",
+    "\n",
+    "print(\"Время обучения модели:\")\n",
+    "print(\"%s seconds\" % (time.time() - start_time))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 180,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Общее качество модели:\n",
+      "PR-AUC:\n",
+      "0.5585074794855924\n",
+      "ROC-AUC:\n",
+      "0.6848688356926932\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(\"Общее качество модели:\")\n",
+    "print(\"PR-AUC:\")\n",
+    "print(pr_auc(y_test, logreg3.predict(X_test_3)))\n",
+    "print(\"ROC-AUC:\")\n",
+    "print(roc_auc_score(y_test, logreg3.predict(X_test_3)))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 183,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Проверка текущей модели (с Target Encoding) на переобучение:\n",
+      "0.5649501868741857\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(\"Проверка текущей модели (с Target Encoding) на переобучение:\")\n",
+    "print(pr_auc(y_train, logreg3.predict(X_train_3)))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 184,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Сравнение с переобучением предыдущих типов кодирования:\n",
+      "0.5710899198109276\n",
+      "0.6325136931242823\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(\"Сравнение с переобучением предыдущих типов кодирования:\")\n",
+    "print(pr_auc(y_train, oenc_pipe.predict(X_train)))\n",
+    "print(pr_auc(y_train, onehot_pipe.predict(X_train)))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 83,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Времени подобное кодирование занимает больше, чем Label Encoder, и меньше, чем OneHot Encoder\n",
+    "\n",
+    "# Ошибка  PR-AUC примерно такая же, как и при кодировании другими способами. ROC-AUC довольно \n",
+    "# нормальный, то есть в целом классификатор относительно нормально работает, низкое качество на PR-AUC \n",
+    "# во многом здесь из-за асимметрии таргета опять же\n",
+    "\n",
+    "# Из интересного можно заметить, что при данном типе кодирования модель склонна к переобучению,\n",
+    "# то есть может показывать наиболее высокие предсказания на тренировочной выборке по сравнению с предыдущими\n",
+    "# типами кодирования"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "sPH6bxw_hW7U"
+   },
+   "source": [
+    "Отметим, что такие признаки сами по себе являются классификаторами и, обучаясь на них, мы допускаем «утечку» целевой переменной в признаки. Это ведёт к переобучению, поэтому считать такие признаки необходимо таким образом, чтобы при вычислении счетчика для конкретного объекта его целевая метка не использовалась. Это можно делать следующими способами:\n",
+    "1. Вычислять значение счётчика по всем объектам расположенным выше в датасете (например, если у нас выборка отсортирована по времени).\n",
+    "2. Вычислять по фолдам, то есть делить выборку на некоторое количество частей и подсчитывать значение признаков по всем фолдам кроме текущего (как делается в кросс-валидации).\n",
+    "3. Вносить шум в посчитанные признаки.\n",
+    "\n",
+    "__Задание 4 (2 балла).__ Реализуйте корректное вычисление счётчиков самым простым способом — добавлением шума к значениям (постарайтесь найти баланс между борьбой с переобучением и сохранением полезности признаков). Снова обучите логистическую регрессию, оцените качество. Сделайте выводы.\n",
+    "Какие плюсы и минусы использования счётчиков по сравнению с one-hot-кодированием можно отметить?"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 185,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "executionInfo": {
+     "elapsed": 4680,
+     "status": "ok",
+     "timestamp": 1700038854791,
+     "user": {
+      "displayName": "Sergey Korpachev",
+      "userId": "09181340988160569540"
+     },
+     "user_tz": -180
+    },
+    "id": "7xLdb3ethW7U",
+    "outputId": "04152f50-f831-4dc6-d0ea-2cd008175544"
+   },
+   "outputs": [],
+   "source": [
+    "noise = np.random.normal(0, 2, X_train.shape)\n",
+    "\n",
+    "X_train_4 = X_train.copy()\n",
+    "X_test_4 = X_test.copy()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 186,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Время кодирования:\n",
+      "0.24155807495117188 seconds\n"
+     ]
+    }
+   ],
+   "source": [
+    "start_time = time.time()\n",
+    "\n",
+    "maps_4 = dict()\n",
+    "\n",
+    "for col in list_of_x_cols_3:\n",
+    "    tmap_4 = dict()\n",
+    "    uniques_4 = X_train[col].unique()\n",
+    "    for unique in uniques_4:\n",
+    "        tmap_4[unique] = y_train[X_train[col]==unique].mean()\n",
+    "        maps_4[col] = tmap_4\n",
+    "        \n",
+    "for col, tmap_4 in maps_4.items():\n",
+    "    \n",
+    "    values_train_4 = np.zeros(np.size(X_train[col]))\n",
+    "    values_test_4 = np.zeros(np.size(X_test[col]))\n",
+    "    \n",
+    "    for val, mean_target in tmap_4.items():\n",
+    "        \n",
+    "        values_train_4[X_train[col]==val] = mean_target\n",
+    "        X_train_4[col] = values_train_4\n",
+    "        \n",
+    "        values_test_4[X_test[col]==val] = mean_target\n",
+    "        X_test_4[col] = values_test_4\n",
+    "        \n",
+    "print(\"Время кодирования:\")\n",
+    "print(\"%s seconds\" % (time.time() - start_time))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 187,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "X_train_noised = X_train_4.to_numpy() + noise"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 188,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "logreg4 = LogisticRegression()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 189,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Время обучения модели:\n",
+      "0.16733384132385254 seconds\n"
+     ]
+    }
+   ],
+   "source": [
+    "start_time = time.time()\n",
+    "\n",
+    "logreg4.fit(X_train_noised, y_train)\n",
+    "\n",
+    "print(\"Время обучения модели:\")\n",
+    "print(\"%s seconds\" % (time.time() - start_time))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 190,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "0.5571442624495824\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(pr_auc(y_test, logreg4.predict(X_test_4)))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 191,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Проверим переобучение:\n",
+      "0.5463963973963971\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(\"Проверим переобучение:\")\n",
+    "print(pr_auc(y_train, logreg4.predict(X_train_4)))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "\"\"\"\n",
+    "\n",
+    "ВЫВОДЫ И ОТВЕТЫ НА ВОПРОСЫ:\n",
+    "\n",
+    "Зашумление помогло нам улучшить модель, и снизить переобучение (убедиться в его отсутствии):\n",
+    "на тренировочной выборке модель показывает такое же качество, как и на тестовой\n",
+    "\n",
+    "Кроме того, зашумление сокращает процесс обучения модели. \n",
+    "\n",
+    "------ Какие плюсы и минусы использования счётчиков по сравнению с one-hot-кодированием можно отметить? ------\n",
+    "\n",
+    "OneHot не подходит для больших датасетов, это кодирование долгое, добавляет размерности датасету,\n",
+    "делает модель тяжелой, обучение долгим, все это не выгодно при большом количестве признаков и данных, очень\n",
+    "плохо реализуется с определенными моделями, например, деревьями. Target быстрее и проще, но при\n",
+    "применении Target у нас качество модели во многом будет зависеть от датасета, \n",
+    "также появляется склонность к переобучению. \n",
+    "\n",
+    "Еще неочевидная вещь состоит в том, что тк в OneHot каждый класс в признаке представляется отдельно, \n",
+    "в определенных моделях редким классам легко при обучении поставить маленькие веса, чтобы они не мешали, и\n",
+    "оставить только значительные, от части поэтому в OneHot легче справляться с переобучением, и на нем будет\n",
+    "эффективно работать регуляризация. В Target все классы внутри одного признака связаны между собой и нельзя\n",
+    "весами уменьшать влияние редких классов, регуляризация помогать не будет, переобучение более вероятно.\n",
+    "\n",
+    "Под Target я тут имею в виду счетчики\n",
+    "\n",
+    "\n",
+    "\"\"\""
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "wtsZzLO_hW7U"
+   },
+   "source": [
+    "__Задание 5 (2 балла).__ В данных имеется признак «возраст клиента». Сейчас мы интерпретируем его как числовой, что в общем случае для линейной модели может быть неверной гипотезой. Тем не менее, у этого признака есть довольно много уникальных значений (сколько?), поэтому применять к нему one-hot кодирование может оказаться излишним. Попробуйте закодировать возраст с помощью счетчиков. Стало ли лучше?\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 192,
+   "metadata": {
+    "colab": {
+     "base_uri": "https://localhost:8080/"
+    },
+    "executionInfo": {
+     "elapsed": 332,
+     "status": "ok",
+     "timestamp": 1700038924974,
+     "user": {
+      "displayName": "Sergey Korpachev",
+      "userId": "09181340988160569540"
+     },
+     "user_tz": -180
+    },
+    "id": "Jk2Qqae_hW7V",
+    "outputId": "ee380c8f-6c38-4f5d-eda2-ae508da0582e"
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Всего уникальных значений возраста: 78\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(\"Всего уникальных значений возраста: \"+str(len(pd.unique(df['age']))))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 193,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "X_train_5 = X_train.copy()\n",
+    "X_test_5 = X_test.copy()\n",
+    "\n",
+    "unique_ages = np.unique(X_train['age'])\n",
+    "age_train = np.zeros(np.size(X_train['age']))\n",
+    "age_test = np.zeros(np.size(X_test['age']))\n",
+    "\n",
+    "for age in unique_ages:\n",
+    "    \n",
+    "    mean_age = y_train[X_train['age']==age].mean()\n",
+    "    \n",
+    "    age_train[X_train['age'] == age] = mean_age\n",
+    "    age_test[X_test['age'] == age] = mean_age\n",
+    "    \n",
+    "X_train_5['age'] = age_train\n",
+    "X_test_5['age'] = age_test\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 194,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "23424    0.118656\n",
+      "39990    0.097681\n",
+      "9340     0.141104\n",
+      "5365     0.102326\n",
+      "2797     0.086957\n",
+      "           ...   \n",
+      "15182    0.189112\n",
+      "12996    0.152968\n",
+      "9453     0.081998\n",
+      "31206    0.083236\n",
+      "19924    0.059072\n",
+      "Name: age, Length: 30891, dtype: float64\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(X_train_5['age'])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 198,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Время кодирования:\n",
+      "0.24760890007019043 seconds\n"
+     ]
+    }
+   ],
+   "source": [
+    "start_time = time.time()\n",
+    "\n",
+    "maps_5 = dict()\n",
+    "\n",
+    "for col in list_of_x_cols_3:\n",
+    "    tmap_5 = dict()\n",
+    "    uniques_5 = X_train[col].unique()\n",
+    "    for unique in uniques_5:\n",
+    "        tmap_5[unique] = y_train[X_train[col]==unique].mean()\n",
+    "        maps_5[col] = tmap_5\n",
+    "        \n",
+    "for col, tmap_5 in maps_5.items():\n",
+    "    \n",
+    "    values_train_5 = np.zeros(np.size(X_train[col]))\n",
+    "    values_test_5 = np.zeros(np.size(X_test[col]))\n",
+    "    \n",
+    "    for val, mean_target in tmap_5.items():\n",
+    "        \n",
+    "        values_train_5[X_train[col]==val] = mean_target\n",
+    "        X_train_5[col] = values_train_5\n",
+    "        \n",
+    "        values_test_5[X_test[col]==val] = mean_target\n",
+    "        X_test_5[col] = values_test_5\n",
+    "        \n",
+    "print(\"Время кодирования:\")\n",
+    "print(\"%s seconds\" % (time.time() - start_time))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 200,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Время обучения модели:\n",
+      "0.1726818084716797 seconds\n"
+     ]
+    }
+   ],
+   "source": [
+    "logreg_counts_age = LogisticRegression()\n",
+    "start_time = time.time()\n",
+    "\n",
+    "logreg_counts_age.fit(X_train_5, y_train)\n",
+    "\n",
+    "print(\"Время обучения модели:\")\n",
+    "print(\"%s seconds\" % (time.time() - start_time))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 201,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "0.5533124395120105\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(pr_auc(y_test, logreg_counts_age.predict(X_test_5)))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "id": "rLqp88AahW7V"
+   },
+   "source": [
+    "Можно пойти и в обратную сторону. У нас есть признаки «месяц и день недели» для звонка. Попробуйте интерпретировать их как числовые (месяц от 0 до 12, дни недели от 0 до 4). Стало ли лучше в этот раз?"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 202,
+   "metadata": {
+    "id": "7V8OqFQkjgR5"
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "['may' 'jun' 'jul' 'aug' 'oct' 'nov' 'dec' 'mar' 'apr' 'sep']\n",
+      "['mon' 'tue' 'wed' 'thu' 'fri']\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(pd.unique(df['month']))\n",
+    "print(pd.unique(df['day_of_week']))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 203,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "map_month = {'jan': 0,\n",
+    "             'feb': 1,\n",
+    "             'mar': 2,\n",
+    "             'apr': 3,\n",
+    "             'may': 4,\n",
+    "             'jun': 5,\n",
+    "             'jul': 6,\n",
+    "             'aug': 7,\n",
+    "             'sep': 8,\n",
+    "             'oct': 9,\n",
+    "             'nov': 10,\n",
+    "             'dec': 11}\n",
+    "\n",
+    "X_train['month'] = X_train['month'].map(map_month)\n",
+    "X_test['month'] = X_test['month'].map(map_month)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 204,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "map_day_of_week = {'mon': 0,\n",
+    "                   'tue': 1,\n",
+    "                   'wed': 2,\n",
+    "                   'thu': 3,\n",
+    "                   'fri': 4}\n",
+    "\n",
+    "X_train['day_of_week'] = X_train['day_of_week'].map(map_day_of_week)\n",
+    "X_test['day_of_week'] = X_test['day_of_week'].map(map_day_of_week)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 205,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "X_train_6 = X_train.copy()\n",
+    "X_test_6 = X_test.copy()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 206,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Время кодирования:\n",
+      "0.19568324089050293 seconds\n"
+     ]
+    }
+   ],
+   "source": [
+    "start_time = time.time()\n",
+    "\n",
+    "maps_6 = dict()\n",
+    "\n",
+    "for col in list_of_x_cols_3:\n",
+    "    tmap_6 = dict()\n",
+    "    uniques_6 = X_train[col].unique()\n",
+    "    for unique in uniques_6:\n",
+    "        tmap_6[unique] = y_train[X_train[col]==unique].mean()\n",
+    "        maps_6[col] = tmap_6\n",
+    "        \n",
+    "for col, tmap_6 in maps_6.items():\n",
+    "    \n",
+    "    values_train_6 = np.zeros(np.size(X_train[col]))\n",
+    "    values_test_6 = np.zeros(np.size(X_test[col]))\n",
+    "    \n",
+    "    for val, mean_target in tmap_6.items():\n",
+    "        \n",
+    "        values_train_6[X_train[col]==val] = mean_target\n",
+    "        X_train_6[col] = values_train_6\n",
+    "        \n",
+    "        values_test_6[X_test[col]==val] = mean_target\n",
+    "        X_test_6[col] = values_test_6\n",
+    "        \n",
+    "print(\"Время кодирования:\")\n",
+    "print(\"%s seconds\" % (time.time() - start_time))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 207,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Время обучения модели:\n",
+      "0.17572402954101562 seconds\n"
+     ]
+    }
+   ],
+   "source": [
+    "logreg_counts_monthday = LogisticRegression()\n",
+    "start_time = time.time()\n",
+    "\n",
+    "logreg_counts_monthday.fit(X_train_6, y_train)\n",
+    "\n",
+    "print(\"Время обучения модели:\")\n",
+    "print(\"%s seconds\" % (time.time() - start_time))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 211,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "0.5585074794855924\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(pr_auc(y_test, logreg_counts_monthday.predict(X_test_6)))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Качество (по крайней мере, на PR-AUC) примерно одинаковое"
+   ]
+  }
+ ],
+ "metadata": {
+  "colab": {
+   "provenance": []
+  },
+  "kernelspec": {
+   "display_name": "Python 3 (ipykernel)",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.9.7"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}
