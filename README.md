@@ -11,10 +11,9 @@ A collection of projects in DS and ML field in jupyter-notebook files
 
 ## DL & NLP
 
--
--
--
--
+- [Poetry generation with RNN](https://github.com/dgrushina/Portfolio-Grushina-Daria/blob/main/Poetry%20generation%20with%20RNN.ipynb)
+- [Embedding-based MT (French-English)](https://github.com/dgrushina/Portfolio-Grushina-Daria/blob/main/Embedding%20based%20MT.ipynb)
+- [Salary prediction with CNN](https://github.com/dgrushina/Portfolio-Grushina-Daria/blob/main/Salary%20prediction%20with%20CNN.ipynb)
 - [Spam filtering using BERT: comparison of classic ML algorithmsa and encoding methods](https://github.com/dgrushina/Portfolio-Grushina-Daria/blob/main/Spam%20filtering.ipynb)
 
 ## Data Analytics
